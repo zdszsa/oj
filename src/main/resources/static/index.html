@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>题目列表 · OJ</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="topbar">
+    <div class="logo">My<span>OJ</span></div>
+    <nav>
+        <a href="/index.html" class="active">题目</a>
+        <a href="/submissions.html">提交记录</a>
+    </nav>
+</div>
+
+<div class="wrap">
+    <h1>题目列表</h1>
+    <div id="list" class="problem-list">
+        <div class="loading">加载中…</div>
+    </div>
+</div>
+
+<script>
+    const DIFF_TEXT = {1: '简单', 2: '中等', 3: '困难'};
+
+    async function load() {
+        const box = document.getElementById('list');
+        try {
+            const res = await fetch('/api/problems');
+            const json = await res.json();
+
+            if (json.code !== 0) {
+                box.innerHTML = '<div class="empty">加载失败：' + json.message + '</div>';
+                return;
+            }
+
+            const list = json.data;
+            if (!list || list.length === 0) {
+                box.innerHTML = '<div class="empty">还没有题目</div>';
+                return;
+            }
+
+            box.innerHTML = list.map(p => {
+                const d = p.difficulty || 1;
+                return `
+                <div class="problem-item" onclick="location.href='/problem.html?id=${p.id}'">
+                    <span class="pid">${p.id}</span>
+                    <span class="ptitle">${p.title}</span>
+                    <span class="meta diff-${d}"><span class="dot diff-${d}"></span>${DIFF_TEXT[d] || '简单'}</span>
+                    <span class="meta">限时 ${p.timeLimitMs} ms</span>
+                </div>`;
+            }).join('');
+
+        } catch (e) {
+            box.innerHTML = '<div class="empty">请求失败：' + e.message + '</div>';
+        }
+    }
+
+    load();
+</script>
+</body>
+</html>

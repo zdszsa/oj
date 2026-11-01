@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>提交记录 · OJ</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .modal-mask {
+            position: fixed; inset: 0; background: rgba(0, 0, 0, .38);
+            display: none; align-items: center; justify-content: center; z-index: 50;
+        }
+        .modal-mask.show { display: flex; }
+        .modal {
+            background: #fff; border-radius: 12px; width: min(820px, 92vw);
+            max-height: 86vh; overflow: auto; padding: 22px 24px;
+        }
+        .modal h2 { font-size: 17px; margin: 0 0 14px; }
+        .modal .label { color: var(--muted); font-size: 12.5px; margin: 14px 0 6px; }
+        .modal pre {
+            background: #fbfbf8; border: 1px solid var(--line); border-radius: 8px;
+            padding: 12px; font-size: 12.5px; line-height: 1.6; overflow: auto;
+            max-height: 320px; margin: 0;
+            font-family: "Cascadia Code", Consolas, monospace;
+        }
+        .modal .close {
+            float: right; border: none; background: transparent; font-size: 20px;
+            color: var(--muted); cursor: pointer; padding: 0 4px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <div class="logo">My<span>OJ</span></div>
+    <nav>
+        <a href="/index.html">题目</a>
+        <a href="/submissions.html" class="active">提交记录</a>
+    </nav>
+</div>
+
+<div class="wrap">
+    <h1>我的提交 <span class="hint" id="total"></span></h1>
+    <div class="panel">
+        <table class="sub-table">
+            <thead>
+            <tr>
+                <th style="width:70px;">#</th>
+                <th>题目</th>
+                <th style="width:120px;">结果</th>
+                <th style="width:90px;">用时</th>
+                <th style="width:180px;">提交时间</th>
+                <th style="width:70px;"></th>
+            </tr>
+            </thead>
+            <tbody id="rows">
+            <tr><td colspan="6" class="empty">加载中…</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal-mask" id="mask">
+    <div class="modal">
+        <button class="close" onclick="closeModal()">×</button>
+        <h2 id="mTitle">提交详情</h2>
+        <div id="mMeta" class="hint"></div>
+        <div class="label">代码</div>
+        <pre id="mCode"></pre>
+        <div class="label" id="outLabel" style="display:none;">判题输出</div>
+        <pre id="mOut" style="display:none;"></pre>
+    </div>
+</div>
+
+<script>
+    const STATUS = {
+        1: {text: '通过', cls: 'st-ok'},
+        2: {text: '编译错误', cls: 'st-ce'},
+        3: {text: '运行错误', cls: 'st-re'},
+        4: {text: '超时', cls: 'st-tle'},
+        5: {text: '答案错误', cls: 'st-wa'},
+        6: {text: '判题中', cls: 'st-sys'},
+        7: {text: '系统错误', cls: 'st-sys'},
+    };
+
+    async function load() {
+        const tbody = document.getElementById('rows');
+        try {
+            const res = await fetch('/api/submissions?page=1&size=20');
+            const json = await res.json();
+            const d = json.data;
+            document.getElementById('total').textContent = '共 ' + d.total + ' 条';
+
+            if (!d.list || d.list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty">还没有提交记录，去做一道题吧</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = d.list.map(s => {
+                const st = STATUS[s.status] || {text: '未知', cls: 'st-sys'};
+                return `<tr>
+                    <td>${s.id}</td>
+                    <td><a href="/problem.html?id=${s.problemId}">${s.problemTitle || '-'}</a></td>
+                    <td><span class="status-badge ${st.cls}" style="padding:2px 9px;font-size:12.5px;">${st.text}</span></td>
+                    <td>${s.timeMs} ms</td>
+                    <td>${(s.createdAt || '').replace('T', ' ')}</td>
+                    <td><a href="javascript:void(0)" onclick="openDetail(${s.id})">查看</a></td>
+                </tr>`;
+            }).join('');
+        } catch (e) {
+            tbody.innerHTML = '<tr><td colspan="6" class="empty">加载失败：' + e.message + '</td></tr>';
+        }
+    }
+
+    async function openDetail(id) {
+        const res = await fetch('/api/submissions/' + id);
+        const json = await res.json();
+        if (json.code !== 0) {
+            alert(json.message);
+            return;
+        }
+        const d = json.data;
+        const st = STATUS[d.status] || {text: '未知', cls: 'st-sys'};
+
+        document.getElementById('mTitle').textContent = '#' + d.id + ' · ' + (d.problemTitle || '');
+        document.getElementById('mMeta').innerHTML =
+            `<span class="status-badge ${st.cls}" style="padding:2px 10px;font-size:13px;">${st.text}</span>
+             <span style="margin-left:10px;">用时 ${d.timeMs} ms · ${(d.createdAt || '').replace('T', ' ')}</span>`;
+        document.getElementById('mCode').textContent = d.code || '';
+
+        const outLabel = document.getElementById('outLabel');
+        const mOut = document.getElementById('mOut');
+        if (d.output && d.output.trim()) {
+            outLabel.style.display = 'block';
+            mOut.style.display = 'block';
+            mOut.textContent = d.output;
+        } else {
+            outLabel.style.display = 'none';
+            mOut.style.display = 'none';
+        }
+
+        document.getElementById('mask').classList.add('show');
+    }
+
+    function closeModal() {
+        document.getElementById('mask').classList.remove('show');
+    }
+
+    document.getElementById('mask').addEventListener('click', e => {
+        if (e.target.id === 'mask') closeModal();
+    });
+
+    load();
+</script>
+</body>
+</html>

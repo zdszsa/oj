@@ -1,0 +1,6 @@
+# 本地配置模板
+# 复制本文件为 application-local.properties，填入你自己的值
+# application-local.properties 已被 .gitignore 忽略，不会提交到仓库
+
+# DeepSeek API Key（申请地址：https://platform.deepseek.com）
+oj.ai.api-key=

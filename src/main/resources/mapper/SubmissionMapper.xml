@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.zzh.oj.mapper.SubmissionMapper">
+
+    <insert id="insert" parameterType="com.zzh.oj.entity.Submission"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO submission (user_id, problem_id, language, status, time_ms)
+        VALUES (#{userId}, #{problemId}, #{language}, #{status}, #{timeMs})
+    </insert>
+
+    <select id="selectById" resultType="com.zzh.oj.entity.Submission">
+        SELECT id, user_id, problem_id, language, status, time_ms, created_at
+        FROM submission
+        WHERE id = #{id}
+    </select>
+
+    <!--
+      ORDER BY 里加 id DESC：created_at 只精确到秒，
+      同一秒内提交多条时顺序会乱，用自增 id 兜底保证稳定排序。
+      另外 (user_id, created_at) 索引可以支撑这个排序，不用额外 filesort。
+    -->
+    <select id="selectVOByUserId" resultType="com.zzh.oj.dto.SubmissionVO">
+        SELECT s.id,
+               s.problem_id,
+               p.title AS problem_title,
+               s.status,
+               s.time_ms,
+               s.created_at
+        FROM submission s
+                 LEFT JOIN problem p ON s.problem_id = p.id
+        WHERE s.user_id = #{userId}
+        ORDER BY s.created_at DESC, s.id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countByUserId" resultType="long">
+        SELECT COUNT(*)
+        FROM submission
+        WHERE user_id = #{userId}
+    </select>
+
+    <select id="selectByProblemId" resultType="com.zzh.oj.entity.Submission">
+        SELECT id, user_id, problem_id, language, status, time_ms, created_at
+        FROM submission
+        WHERE problem_id = #{problemId}
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <update id="updateStatus">
+        UPDATE submission
+        SET status = #{status}, time_ms = #{timeMs}
+        WHERE id = #{id}
+    </update>
+
+    <select id="selectDetailById" resultType="com.zzh.oj.dto.SubmissionDetailVO">
+        SELECT s.id,
+               s.problem_id,
+               p.title AS problem_title,
+               s.status,
+               s.time_ms,
+               s.created_at,
+               d.code,
+               d.output,
+               d.ai_review
+        FROM submission s
+                 LEFT JOIN problem p ON s.problem_id = p.id
+                 LEFT JOIN submission_detail d ON d.submission_id = s.id
+        WHERE s.id = #{id}
+    </select>
+
+</mapper>

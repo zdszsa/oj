@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.zzh.oj.mapper.SubmissionDetailMapper">
+
+    <insert id="insert" parameterType="com.zzh.oj.entity.SubmissionDetail">
+        INSERT INTO submission_detail (submission_id, code, output, ai_review)
+        VALUES (#{submissionId}, #{code}, #{output}, #{aiReview})
+    </insert>
+
+    <select id="selectBySubmissionId" resultType="com.zzh.oj.entity.SubmissionDetail">
+        SELECT submission_id, code, output, ai_review
+        FROM submission_detail
+        WHERE submission_id = #{submissionId}
+    </select>
+
+    <update id="updateOutput">
+        UPDATE submission_detail
+        SET output = #{output}
+        WHERE submission_id = #{submissionId}
+    </update>
+
+    <update id="updateAiReview">
+        UPDATE submission_detail
+        SET ai_review = #{aiReview}
+        WHERE submission_id = #{submissionId}
+    </update>
+
+</mapper>

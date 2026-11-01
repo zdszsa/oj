@@ -1,0 +1,68 @@
+
+### 0. 健康检查
+GET http://localhost:8080/ping
+
+### 1. 题目列表
+GET http://localhost:8080/api/problems
+
+### 2. 题目详情（id=1）
+GET http://localhost:8080/api/problems/1
+
+### 3. 题目详情（不存在，应返回 404）
+GET http://localhost:8080/api/problems/999
+
+
+### ============ 下面是判题测试 ============
+### 4. A+B 正确解 → 应该返回「通过」，3/3 用例
+POST http://localhost:8080/api/submissions
+Content-Type: application/json
+
+{
+  "problemId": 1,
+  "code": "import java.util.Scanner; public class Main { public static void main(String[] a) { Scanner sc = new Scanner(System.in); System.out.println(sc.nextInt() + sc.nextInt()); } }"
+}
+
+### 5. 故意输出 0 → 应该返回「答案错误」
+POST http://localhost:8080/api/submissions
+Content-Type: application/json
+
+{
+  "problemId": 1,
+  "code": "import java.util.Scanner; public class Main { public static void main(String[] a) { Scanner sc = new Scanner(System.in); sc.nextInt(); sc.nextInt(); System.out.println(0); } }"
+}
+
+### 6. 语法错误 → 应该返回「编译错误」
+POST http://localhost:8080/api/submissions
+Content-Type: application/json
+
+{
+  "problemId": 1,
+  "code": "public class Main { public static void main(String[] a) { int x = ; } }"
+}
+
+### 7. 死循环 → 应该返回「超时」，大约 2 秒后
+POST http://localhost:8080/api/submissions
+Content-Type: application/json
+
+{
+  "problemId": 1,
+  "code": "public class Main { public static void main(String[] a) { while (true) {} } }"
+}
+
+### 8. 除零 → 应该返回「运行错误」
+POST http://localhost:8080/api/submissions
+Content-Type: application/json
+
+{
+  "problemId": 1,
+  "code": "public class Main { public static void main(String[] a) { int x = 1 / 0; } }"
+}
+
+### 9. 空代码 → 应该返回 400 参数错误
+POST http://localhost:8080/api/submissions
+Content-Type: application/json
+
+{
+  "problemId": 1,
+  "code": ""
+}

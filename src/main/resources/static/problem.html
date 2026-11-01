@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>做题 · OJ</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="topbar">
+    <div class="logo">My<span>OJ</span></div>
+    <nav>
+        <a href="/index.html">题目</a>
+        <a href="/submissions.html">提交记录</a>
+    </nav>
+</div>
+
+<div class="wrap">
+    <h1 id="title">加载中…</h1>
+
+    <div class="solve-layout">
+        <div class="panel">
+            <div class="panel-head">
+                <span>题目描述</span>
+                <span class="hint" id="limits"></span>
+            </div>
+            <div class="panel-body">
+                <pre class="statement" id="statement"></pre>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-head">
+                <span>代码</span>
+                <span class="hint">Java 17 · 类名必须是 Main</span>
+            </div>
+            <div class="panel-body">
+                <textarea id="code" spellcheck="false"></textarea>
+                <div class="btn-row">
+                    <button class="btn-primary" id="submitBtn">提交</button>
+                    <button class="btn-ghost" id="resetBtn">重置</button>
+                    <span class="hint" id="tip"></span>
+                </div>
+                <div id="result"></div>
+                <div id="aiBox"></div>
+            </div>
+        </div>
+    </div>
+
+    <h1 style="margin-top:30px;">最近提交</h1>
+    <div class="panel">
+        <table class="sub-table">
+            <thead>
+            <tr>
+                <th style="width:70px;">#</th>
+                <th>题目</th>
+                <th style="width:110px;">结果</th>
+                <th style="width:90px;">用时</th>
+                <th style="width:170px;">时间</th>
+            </tr>
+            </thead>
+            <tbody id="subs">
+            <tr><td colspan="5" class="empty">加载中…</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const TEMPLATE = `import java.util.Scanner;
+
+public class Main {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        // 在这里写你的代码
+    }
+}
+`;
+
+    const STATUS = {
+        1: {text: '通过', cls: 'st-ok'},
+        2: {text: '编译错误', cls: 'st-ce'},
+        3: {text: '运行错误', cls: 'st-re'},
+        4: {text: '超时', cls: 'st-tle'},
+        5: {text: '答案错误', cls: 'st-wa'},
+        6: {text: '判题中', cls: 'st-sys'},
+        7: {text: '系统错误', cls: 'st-sys'},
+    };
+
+    const params = new URLSearchParams(location.search);
+    const problemId = Number(params.get('id')) || 1;
+
+    const $title = document.getElementById('title');
+    const $statement = document.getElementById('statement');
+    const $limits = document.getElementById('limits');
+    const $code = document.getElementById('code');
+    const $btn = document.getElementById('submitBtn');
+    const $tip = document.getElementById('tip');
+    const $result = document.getElementById('result');
+
+    $code.value = TEMPLATE;
+
+    // Tab 键插入 4 个空格，不然切出去很难受
+    $code.addEventListener('keydown', e => {
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const s = $code.selectionStart, en = $code.selectionEnd;
+            $code.value = $code.value.slice(0, s) + '    ' + $code.value.slice(en);
+            $code.selectionStart = $code.selectionEnd = s + 4;
+        }
+    });
+
+    async function loadProblem() {
+        const res = await fetch('/api/problems/' + problemId);
+        const json = await res.json();
+        if (json.code !== 0) {
+            $title.textContent = '题目加载失败：' + json.message;
+            return;
+        }
+        const p = json.data;
+        $title.textContent = p.id + '. ' + p.title;
+        $statement.textContent = p.description || '';
+        $limits.textContent = '限时 ' + p.timeLimitMs + ' ms · 内存 ' + p.memoryLimitMb + ' MB';
+        document.title = p.title + ' · OJ';
+    }
+
+    async function loadSubmissions() {
+        const tbody = document.getElementById('subs');
+        try {
+            const res = await fetch('/api/submissions?page=1&size=8');
+            const json = await res.json();
+            const list = json.data.list || [];
+            if (list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="empty">还没有提交记录</td></tr>';
+                return;
+            }
+            tbody.innerHTML = list.map(s => {
+                const st = STATUS[s.status] || {text: '未知', cls: 'st-sys'};
+                return `<tr>
+                    <td>${s.id}</td>
+                    <td>${s.problemTitle || '-'}</td>
+                    <td><span class="status-badge ${st.cls}" style="padding:2px 9px;font-size:12.5px;">${st.text}</span></td>
+                    <td>${s.timeMs} ms</td>
+                    <td>${(s.createdAt || '').replace('T', ' ')}</td>
+                </tr>`;
+            }).join('');
+        } catch (e) {
+            tbody.innerHTML = '<tr><td colspan="5" class="empty">加载失败</td></tr>';
+        }
+    }
+
+    function showResult(data) {
+        const st = STATUS[data.status] || {text: '未知', cls: 'st-sys'};
+        let html = `<span class="status-badge ${st.cls}">${st.text}</span>
+            <span class="result-meta">用时 ${data.timeMs} ms · 通过 ${data.passedCases}/${data.totalCases} 组用例</span>`;
+        if (data.output && data.output.trim()) {
+            const box = document.createElement('div');
+            box.className = 'output-box';
+            box.textContent = data.output;
+            $result.innerHTML = html;
+            $result.appendChild(box);
+        } else {
+            $result.innerHTML = html;
+        }
+        $result.style.display = 'block';
+    }
+
+    /* ---------- AI 点评：判题结果先出来，点评后补 ---------- */
+    const $aiBox = document.getElementById('aiBox');
+
+    function showAi(review) {
+        $aiBox.innerHTML = '<div class="ai-label">AI 代码点评</div><div class="ai-box"></div>';
+        $aiBox.querySelector('.ai-box').textContent = review;
+        $aiBox.style.display = 'block';
+    }
+
+    async function pollAiReview(id, tries) {
+        if (tries > 8) {                 // 最多等约 16 秒，久了就不等了
+            $aiBox.innerHTML = '<div class="ai-loading">AI 点评暂时没有返回</div>';
+            $aiBox.style.display = 'block';
+            return;
+        }
+        try {
+            const res = await fetch('/api/submissions/' + id);
+            const json = await res.json();
+            const d = json.data || {};
+            if (d.aiReview) {
+                showAi(d.aiReview);
+                return;
+            }
+        } catch (e) {
+            /* 忽略，继续等 */
+        }
+        setTimeout(() => pollAiReview(id, tries + 1), 2000);
+    }
+
+    $btn.addEventListener('click', async () => {
+        const code = $code.value.trim();
+        if (!code) {
+            $tip.textContent = '代码不能为空';
+            return;
+        }
+        $btn.disabled = true;
+        $btn.textContent = '判题中…';
+        $tip.textContent = '';
+        $result.style.display = 'none';
+        $aiBox.style.display = 'none';
+        $aiBox.innerHTML = '';
+
+        const t0 = Date.now();
+        try {
+            const res = await fetch('/api/submissions', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({problemId: problemId, code: code})
+            });
+            const json = await res.json();
+            if (json.code !== 0) {
+                $tip.textContent = json.message;
+            } else {
+                showResult(json.data);
+                pollAiReview(json.data.submissionId, 0);
+                loadSubmissions();
+            }
+        } catch (e) {
+            $tip.textContent = '请求失败：' + e.message;
+        } finally {
+            $btn.disabled = false;
+            $btn.textContent = '提交';
+            $tip.textContent = '本次耗时 ' + ((Date.now() - t0) / 1000).toFixed(1) + ' 秒';
+        }
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', () => {
+        if (confirm('确定重置代码？')) {
+            $code.value = TEMPLATE;
+            $result.style.display = 'none';
+        }
+    });
+
+    loadProblem();
+    loadSubmissions();
+</script>
+</body>
+</html>
