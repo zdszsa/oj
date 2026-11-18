@@ -27,6 +27,8 @@
                p.title AS problem_title,
                s.status,
                s.time_ms,
+               s.passed_cases,
+               s.total_cases,
                s.created_at
         FROM submission s
                  LEFT JOIN problem p ON s.problem_id = p.id
@@ -55,12 +57,45 @@
         WHERE id = #{id}
     </update>
 
+    <!--
+      判题结果回写。
+      WHERE 里带上 status = 6（PENDING）是关键：
+      同一个任务被投递两次（启动恢复 + 正常入队撞车）时，第二次影响 0 行，
+      结果只写一次。这就是幂等，不需要额外的去重表。
+    -->
+    <update id="finishIfPending">
+        UPDATE submission
+        SET status       = #{status},
+            time_ms      = #{timeMs},
+            passed_cases = #{passedCases},
+            total_cases  = #{totalCases}
+        WHERE id = #{id}
+          AND status = 6
+    </update>
+
+    <!--
+      启动恢复：把遗留的「判题中」捞出来重新入队。
+      只取需要的三列，代码字段在 detail 表里，一起带出来避免 N+1。
+    -->
+    <select id="selectPendingTasks" resultType="com.zzh.oj.judge.JudgeTask">
+        SELECT s.id         AS submissionId,
+               s.problem_id AS problemId,
+               d.code       AS code
+        FROM submission s
+                 JOIN submission_detail d ON d.submission_id = s.id
+        WHERE s.status = 6
+        ORDER BY s.id
+        LIMIT #{limit}
+    </select>
+
     <select id="selectDetailById" resultType="com.zzh.oj.dto.SubmissionDetailVO">
         SELECT s.id,
                s.problem_id,
                p.title AS problem_title,
                s.status,
                s.time_ms,
+               s.passed_cases,
+               s.total_cases,
                s.created_at,
                d.code,
                d.output,

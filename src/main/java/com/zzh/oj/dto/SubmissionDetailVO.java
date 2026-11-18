@@ -22,6 +22,10 @@ public class SubmissionDetailVO {
 
     private Integer timeMs;
 
+    private Integer passedCases;
+
+    private Integer totalCases;
+
     private LocalDateTime createdAt;
 
     /** 用户提交的源码 */

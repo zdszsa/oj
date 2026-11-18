@@ -23,5 +23,10 @@ public class SubmissionVO {
 
     private Integer timeMs;
 
+    /** 通过用例数 / 总用例数，列表页也展示，让用户一眼看到差多远 */
+    private Integer passedCases;
+
+    private Integer totalCases;
+
     private LocalDateTime createdAt;
 }

@@ -51,10 +51,13 @@ CREATE TABLE submission (
     language   VARCHAR(20) NOT NULL DEFAULT 'java'  COMMENT '语言',
     status     TINYINT     NOT NULL                 COMMENT '1OK 2CE 3RE 4TLE 5WA 6PENDING 7SYSTEM_ERROR',
     time_ms    INT         NOT NULL DEFAULT 0       COMMENT '耗时（毫秒）',
+    passed_cases INT       NOT NULL DEFAULT 0       COMMENT '通过用例数',
+    total_cases  INT       NOT NULL DEFAULT 0       COMMENT '总用例数',
     created_at DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '提交时间',
     PRIMARY KEY (id),
     KEY idx_user_time    (user_id, created_at),
-    KEY idx_problem_time (problem_id, created_at)
+    KEY idx_problem_time (problem_id, created_at),
+    KEY idx_status       (status)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '提交记录';
 
 -- ------------------------------------------------------------

@@ -152,8 +152,10 @@ public class Main {
 
     function showResult(data) {
         const st = STATUS[data.status] || {text: '未知', cls: 'st-sys'};
+        const pass = (data.passedCases != null && data.totalCases > 0)
+            ? ` · 通过 ${data.passedCases}/${data.totalCases} 组用例` : '';
         let html = `<span class="status-badge ${st.cls}">${st.text}</span>
-            <span class="result-meta">用时 ${data.timeMs} ms · 通过 ${data.passedCases}/${data.totalCases} 组用例</span>`;
+            <span class="result-meta">用时 ${data.timeMs || 0} ms${pass}</span>`;
         if (data.output && data.output.trim()) {
             const box = document.createElement('div');
             box.className = 'output-box';
@@ -164,6 +166,27 @@ public class Main {
             $result.innerHTML = html;
         }
         $result.style.display = 'block';
+    }
+
+    /* ---------- 判题是异步的：提交后轮询状态，直到不再是「判题中」(6) ---------- */
+    async function pollResult(id, tries) {
+        if (tries > 60) {                 // 最多等约 25 秒
+            $tip.textContent = '判题超时，请到提交记录里查看结果';
+            return null;
+        }
+        try {
+            const res = await fetch('/api/submissions/' + id);
+            const json = await res.json();
+            const d = json.data || {};
+            if (d.status === 6) {
+                await new Promise(r => setTimeout(r, 400));
+                return pollResult(id, tries + 1);
+            }
+            return d;
+        } catch (e) {
+            await new Promise(r => setTimeout(r, 800));
+            return pollResult(id, tries + 1);
+        }
     }
 
     /* ---------- AI 点评：判题结果先出来，点评后补 ---------- */
@@ -202,7 +225,7 @@ public class Main {
             return;
         }
         $btn.disabled = true;
-        $btn.textContent = '判题中…';
+        $btn.textContent = '提交中…';
         $tip.textContent = '';
         $result.style.display = 'none';
         $aiBox.style.display = 'none';
@@ -219,16 +242,22 @@ public class Main {
             if (json.code !== 0) {
                 $tip.textContent = json.message;
             } else {
-                showResult(json.data);
-                pollAiReview(json.data.submissionId, 0);
-                loadSubmissions();
+                // 提交接口只做落库入队，很快返回；判题结果靠轮询拿
+                const submitMs = Date.now() - t0;
+                $btn.textContent = '判题中…';
+                const detail = await pollResult(json.data.submissionId, 0);
+                if (detail) {
+                    showResult(detail);
+                    pollAiReview(json.data.submissionId, 0);
+                    loadSubmissions();
+                    $tip.textContent = `提交 ${submitMs} ms · 判题 ${((Date.now() - t0) / 1000).toFixed(1)} s`;
+                }
             }
         } catch (e) {
             $tip.textContent = '请求失败：' + e.message;
         } finally {
             $btn.disabled = false;
             $btn.textContent = '提交';
-            $tip.textContent = '本次耗时 ' + ((Date.now() - t0) / 1000).toFixed(1) + ' 秒';
         }
     });
 
