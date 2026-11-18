@@ -27,3 +27,8 @@ Thumbs.db
 # ---------- 测试脚本产生的临时结果 ----------
 res.txt
 limit.txt
+__pycache__/
+*.pyc
+# 压测清理时导出的 id 清单、临时备份，不入库
+deleted_*_ids*.txt
+backup_problem_*.sql
